@@ -53,6 +53,9 @@ class PBD_Learning_Path {
             'path_bottom_color' => '#A4B1EC',
             'completed_bottom_color' => '#52A87F',
             'completed_top_color' => '#67D29F',
+            'banner_color_start' => '#BAB5FA',
+            'banner_color_end' => '#677DDE',
+       
         ), $atts, 'pbd_learning_path' );
 
         $course_id = $atts['course_id'];
@@ -127,7 +130,7 @@ class PBD_Learning_Path {
             }
             .learning_path_banner {
                 display: flex;
-                background: linear-gradient(268.06deg, #BAB5FA 0%, #677DDE 100%);
+                background: linear-gradient(268.06deg, ' . $atts['banner_color_start'] . ' 0%, ' . $atts['banner_color_end'] . ' 100%);
                 border-radius: 16px;	
                 padding: 36.5px 30px;
                 margin-bottom: 60px;
