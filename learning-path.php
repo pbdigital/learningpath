@@ -167,10 +167,25 @@ class PBD_Learning_Path {
     </style>';
 	$output .= '<div class="learning_path_container">';
 	$prev_completed = false;
+
+  // Reset the array pointer to the beginning
     foreach ( $lessons as $key=>$lesson ) {
         $marginValuePrevious = 0;
         $currentTopic = 1;
         $topics = learndash_topic_dots( $lesson['post']->ID, false, 'array', $user_id);
+        $quizzes = learndash_get_lesson_quiz_list($lesson['post']->ID, $user_id);
+        $topics = array_merge($topics, $quizzes);
+
+        if ($key === count($lessons)) {
+            $quizzes = learndash_get_course_quiz_list( $course_id, $user_id);
+            
+            $topics = array_merge($topics, $quizzes);
+           
+        } else {
+            // Not the last item
+            
+        }
+
 		$topic_count = count($topics) + 1; // Need to add one as we need to include the finish step which isn't an LD topic
         $middleIndex = floor( $topic_count / 2 );
         $isEven = $topic_count % 2 == 0;
@@ -185,14 +200,14 @@ class PBD_Learning_Path {
 			</div>
 		
 		';
-	
-        $output .= '<div class="learning_path">';
         
+        $output .= '<div class="learning_path">';
+
         foreach ($topics as $index=>$topic) {
             // if ( $index == 0 || $index == $topic_count - 1 ) {
             //     continue;
             // }
-            
+            $completed = false;
             $marginValue;
             $marginIconValue;
             $marginIconStyle;
@@ -224,10 +239,21 @@ class PBD_Learning_Path {
                 $marginIconStyle = "margin-left: ".$marginIconValue."px;";
             }
             $marginValuePrevious = $marginValue;
-            // Use $topic to get the topic status (completed or not)
-			// Get the topic status (completed or not)
-			$topic_id = $topic->ID;
-			$completed = learndash_is_topic_complete($user_id, $topic_id);
+
+            if (!isset($topic->ID)){
+                //This is a quiz
+                $topic_id = $topic['post']->ID;
+                
+                if ($topic['status'] == "completed"){
+                    $completed = true;
+                }
+            } else {
+                // Use $topic to get the topic status (completed or not)
+                // Get the topic status (completed or not)
+                $topic_id = $topic->ID;
+                $completed = $topic->completed;
+            }
+            
 
 			// Determine the status
 			if ($completed) {
