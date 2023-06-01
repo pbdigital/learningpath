@@ -18,7 +18,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 if ( ! class_exists( 'PBD_Learning_Path' ) ) :
 class PBD_Learning_Path {
+    protected static $instance = null;
 
+    public static function instance() {
+        if (null === self::$instance) {
+            self::$instance = new self;
+        }
+        return self::$instance;
+    }
     public function __construct() {
         add_action( 'init', array( $this, 'init' ), 0 );
     }
@@ -28,6 +35,9 @@ class PBD_Learning_Path {
     }
 
     public function pbd_learning_path_func( $atts ) {
+        if ( !is_plugin_active( 'sfwd-lms/sfwd_lms.php' ) ) {
+            return 'Learndash must be activated to display this learning path';
+        }
         $atts = shortcode_atts( array(
             'course_id' => '',
         ), $atts, 'pbd_learning_path' );
@@ -90,10 +100,17 @@ class PBD_Learning_Path {
 		.learning_path a.finish.completed svg .trophy.dark {
             fill: #F3A000;
         }
-        .learning_path a.completed svg .bottom {
+
+        .path_mini_step .top {
+            fill: #E1E5F9;
+        }
+        .path_mini_step .bottom {
+            fill: #A4B1EC;
+        }
+        .learning_path a.completed svg .bottom, .learning_path .path_mini_step.completed svg .bottom {
             fill: #52A87F;
         }
-        .learning_path a.completed svg .top {
+        .learning_path a.completed svg .top, .learning_path .path_mini_step.completed svg .top{
             fill: #67D29F;
         }
 		.learning_path_banner {
@@ -112,11 +129,47 @@ class PBD_Learning_Path {
 			font-size:15px;
 			color: #fff;
 		}
-
+        .learning_path .path_mini_step {
+            margin-bottom: 15px;
+        }
+        .learning_path .tooltip {
+            position:absolute;
+            width: 140px;
+            height: 50px;
+            top: -55px;
+            left: -35px;
+            transform-origin: bottom; 
+        }
+        .learning_path .tooltip .text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100px;
+        }
+        @keyframes wobble {
+            0% { transform: translateX(0%); }
+            15% { transform: translateX(-10%); }
+            30% { transform: translateX(10%); }
+            45% { transform: translateX(-10%); }
+            60% { transform: translateX(10%); }
+            75% { transform: translateX(-10%); }
+            90% { transform: translateX(10%); }
+            100% { transform: translateX(0%); }
+        }
+        @keyframes seesaw {
+            0% { transform: rotate(0deg); }
+            25% { transform: rotate(-5deg); }
+            50% { transform: rotate(0deg); }
+            75% { transform: rotate(5deg); }
+            100% { transform: rotate(0deg); }
+          }
     </style>';
 	$output .= '<div class="learning_path_container">';
 	$prev_completed = false;
     foreach ( $lessons as $key=>$lesson ) {
+        $marginValuePrevious = 0;
+        $currentTopic = 1;
         $topics = learndash_topic_dots( $lesson['post']->ID, false, 'array', $user_id);
 		$topic_count = count($topics) + 1; // Need to add one as we need to include the finish step which isn't an LD topic
         $middleIndex = floor( $topic_count / 2 );
@@ -134,11 +187,17 @@ class PBD_Learning_Path {
 		';
 	
         $output .= '<div class="learning_path">';
+        
         foreach ($topics as $index=>$topic) {
             // if ( $index == 0 || $index == $topic_count - 1 ) {
             //     continue;
             // }
+            
             $marginValue;
+            $marginIconValue;
+            $marginIconStyle;
+            $multiplier = 1.25;
+            $multiplierExtra = 30;
             if ($isEven && ($index == $middleIndex || $index == $middleIndex - 1)) {
                 $marginValue = $middleIndex * 50;
             } elseif ($index <= $middleIndex) {
@@ -146,13 +205,25 @@ class PBD_Learning_Path {
             } else {
                 $marginValue = ($topic_count - $index - 1) * 50;
             }
-
+            if ($currentTopic > $middleIndex){
+                $multiplier = 1;
+                $multiplierExtra = -30;
+            }
+            if ($currentTopic == $middleIndex && $isEven){
+                $multiplier = 1;
+                $multiplierExtra = 0;
+            }
             if ($key % 2 == 0) {
                 $marginStyle = "margin-right: ${marginValue}px;";
+                $marginIconValue = $marginValue * $multiplier + $multiplierExtra;
+                $marginIconStyle = "margin-right: ".$marginIconValue."px;";
             } else {
                 $marginValue = $marginValue * 1.2;
+                $marginIconValue = $marginValue * $multiplier + $multiplierExtra;
                 $marginStyle = "margin-left: ${marginValue}px;";
+                $marginIconStyle = "margin-left: ".$marginIconValue."px;";
             }
+            $marginValuePrevious = $marginValue;
             // Use $topic to get the topic status (completed or not)
 			// Get the topic status (completed or not)
 			$topic_id = $topic->ID;
@@ -166,8 +237,6 @@ class PBD_Learning_Path {
 				$status = $prev_completed ? "next" : "locked";
 				$prev_completed = false;
 			}
-
-            
 	
             // Build SVG and links based on topic status
             $svg = "";
@@ -179,6 +248,21 @@ class PBD_Learning_Path {
                 </svg>';
             } else if($status == "next"){
                 $svg = '
+                <div class="tooltip">
+                    <div class="text">You Are Here</div>
+                    <svg width="140" height="56" viewBox="0 0 140 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="138.75" y="46.75" width="137.5" height="45.5" rx="12.75" transform="rotate(-180 138.75 46.75)" fill="white"/>
+                    <rect x="138.75" y="46.75" width="137.5" height="45.5" rx="12.75" transform="rotate(-180 138.75 46.75)" stroke="#E1E5F9" stroke-width="1.5"/>
+                    <g clip-path="url(#clip0_312_17269)">
+                    <path d="M75 45.25L76.6013 45.25L75.5762 46.4801L70.5762 52.4801L70 53.1715L69.4238 52.4801L64.4238 46.4801L63.3987 45.25L65 45.25L75 45.25Z" fill="white" stroke="#E1E5F9" stroke-width="1.5" stroke-linejoin="round"/>
+                    </g>
+                    <defs>
+                    <clipPath id="clip0_312_17269">
+                    <rect width="136" height="8" fill="white" transform="matrix(-1 -8.74228e-08 -8.74228e-08 1 138 46)"/>
+                    </clipPath>
+                    </defs>
+                    </svg>
+                </div>
 				<svg width="70" height="66" viewBox="0 0 70 66" fill="none" xmlns="http://www.w3.org/2000/svg">
 				<path d="M35 66C54.33 66 70 52.6044 70 36.08V29H0V36.08C0 52.6044 15.67 66 35 66Z"  class="bottom"/>
 				<ellipse cx="35" cy="28" rx="35" ry="28"  class="top"/>
@@ -200,6 +284,12 @@ class PBD_Learning_Path {
             $output .= "<a class='$status' style='$marginStyle' href='$url'>
                 $svg
             </a>";
+            $output .= '<div style="'.$marginIconStyle.'" class="path_mini_step '.$status .'"><svg width="18" height="17" viewBox="0 0 18 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M8.75 16.5C13.5825 16.5 17.5 13.1511 17.5 9.02V7.25H0V9.02C0 13.1511 3.91751 16.5 8.75 16.5Z" class="bottom"/>
+            <ellipse cx="8.75" cy="7" rx="8.75" ry="7" class="top"/>
+            </svg></div>
+            ';
+            $currentTopic++;
         }
 		if ($prev_completed){
 			$finish_completed = "completed";
@@ -207,22 +297,39 @@ class PBD_Learning_Path {
 			$finish_completed = "";
 		}
 		$output .= '<a class="finish '.$finish_completed.'" >
-		<svg width="70" height="66" viewBox="0 0 70 66" fill="none" xmlns="http://www.w3.org/2000/svg">
-		<path d="M35 66C54.33 66 70 52.6044 70 36.08V29H0V36.08C0 52.6044 15.67 66 35 66Z" class="bottom"/>
-		<ellipse cx="35" cy="28" rx="35" ry="28" class="top"/>
-		<path class="trophy" d="M37.5827 40.0002H32.5059L33.6596 32.6769H36.429L37.5827 40.0002Z" />
-		<path class="trophy" d="M37.1986 34.3461C38.3883 33.1564 38.3883 31.2276 37.1986 30.0379C36.0089 28.8483 34.0801 28.8483 32.8904 30.0379C31.7007 31.2276 31.7007 33.1564 32.8904 34.3461C34.0801 35.5358 36.0089 35.5358 37.1986 34.3461Z" />
-		<path class="trophy dark" d="M44.9512 27.585H25.1357C22.458 27.585 20.2793 25.4063 20.2793 22.7285C20.2793 20.0507 22.458 17.8721 25.1357 17.8721H44.9512C47.629 17.8721 49.8076 20.0507 49.8076 22.7285C49.8076 25.4063 47.629 27.585 44.9512 27.585ZM25.1357 19.5232C23.3685 19.5232 21.9308 20.9609 21.9308 22.7285C21.9308 24.4962 23.3685 25.9335 25.1357 25.9335H44.9512C46.7185 25.9335 48.1562 24.4958 48.1562 22.7285C48.1562 20.9612 46.7185 19.5232 44.9512 19.5232H25.1357Z" fill="#A4B1EC"/>
-		<path class="trophy" d="M43.6282 15.077V24.7692C43.6282 29.5105 39.7854 33.3533 35.0441 33.3533C30.3028 33.3533 26.459 29.5105 26.459 24.7692V15.077H43.6282Z" fill="#A4B1EC"/>
-		<path class="trophy dark" d="M44.1837 13.6H25.9067C25.091 13.6 24.4297 14.2613 24.4297 15.077C24.4297 15.8927 25.091 16.554 25.9067 16.554H44.1837C44.9994 16.554 45.6607 15.8927 45.6607 15.077C45.6607 14.2613 44.9994 13.6 44.1837 13.6Z" fill="#A4B1EC"/>
-		<path class="trophy" d="M27.2211 14.0177H29.1298C29.2635 14.0177 29.3723 14.1265 29.3723 14.2602V15.8942C29.3723 16.0279 29.2635 16.1367 29.1298 16.1367H27.2211C27.0873 16.1367 26.9785 16.0279 26.9785 15.8942V14.2602C26.9785 14.1265 27.0873 14.0177 27.2211 14.0177Z" fill="#A4B1EC"/>
-		<path class="trophy" d="M30.4437 14.0177H31.1555C31.2893 14.0177 31.3981 14.1265 31.3981 14.2602V15.8942C31.3981 16.0279 31.2893 16.1367 31.1555 16.1367H30.4437C30.31 16.1367 30.2012 16.0279 30.2012 15.8942V14.2602C30.2012 14.1265 30.31 14.0177 30.4437 14.0177Z" fill="#A4B1EC"/>
-		<path class="trophy dark" d="M39.1059 38.7078H30.9827C29.6061 38.7078 28.4902 39.8236 28.4902 41.2002C28.4902 41.8629 29.0276 42.4003 29.6903 42.4003H40.398C41.0606 42.4003 41.598 41.8629 41.598 41.2002C41.598 39.8236 40.4822 38.7078 39.1056 38.7078H39.1059Z" fill="#A4B1EC"/>
-		</svg>
-        </a>';
+            <svg width="70" height="66" viewBox="0 0 70 66" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M35 66C54.33 66 70 52.6044 70 36.08V29H0V36.08C0 52.6044 15.67 66 35 66Z" class="bottom"/>
+            <ellipse cx="35" cy="28" rx="35" ry="28" class="top"/>
+            <path class="trophy" d="M37.5827 40.0002H32.5059L33.6596 32.6769H36.429L37.5827 40.0002Z" />
+            <path class="trophy" d="M37.1986 34.3461C38.3883 33.1564 38.3883 31.2276 37.1986 30.0379C36.0089 28.8483 34.0801 28.8483 32.8904 30.0379C31.7007 31.2276 31.7007 33.1564 32.8904 34.3461C34.0801 35.5358 36.0089 35.5358 37.1986 34.3461Z" />
+            <path class="trophy dark" d="M44.9512 27.585H25.1357C22.458 27.585 20.2793 25.4063 20.2793 22.7285C20.2793 20.0507 22.458 17.8721 25.1357 17.8721H44.9512C47.629 17.8721 49.8076 20.0507 49.8076 22.7285C49.8076 25.4063 47.629 27.585 44.9512 27.585ZM25.1357 19.5232C23.3685 19.5232 21.9308 20.9609 21.9308 22.7285C21.9308 24.4962 23.3685 25.9335 25.1357 25.9335H44.9512C46.7185 25.9335 48.1562 24.4958 48.1562 22.7285C48.1562 20.9612 46.7185 19.5232 44.9512 19.5232H25.1357Z" fill="#A4B1EC"/>
+            <path class="trophy" d="M43.6282 15.077V24.7692C43.6282 29.5105 39.7854 33.3533 35.0441 33.3533C30.3028 33.3533 26.459 29.5105 26.459 24.7692V15.077H43.6282Z" fill="#A4B1EC"/>
+            <path class="trophy dark" d="M44.1837 13.6H25.9067C25.091 13.6 24.4297 14.2613 24.4297 15.077C24.4297 15.8927 25.091 16.554 25.9067 16.554H44.1837C44.9994 16.554 45.6607 15.8927 45.6607 15.077C45.6607 14.2613 44.9994 13.6 44.1837 13.6Z" fill="#A4B1EC"/>
+            <path class="trophy" d="M27.2211 14.0177H29.1298C29.2635 14.0177 29.3723 14.1265 29.3723 14.2602V15.8942C29.3723 16.0279 29.2635 16.1367 29.1298 16.1367H27.2211C27.0873 16.1367 26.9785 16.0279 26.9785 15.8942V14.2602C26.9785 14.1265 27.0873 14.0177 27.2211 14.0177Z" fill="#A4B1EC"/>
+            <path class="trophy" d="M30.4437 14.0177H31.1555C31.2893 14.0177 31.3981 14.1265 31.3981 14.2602V15.8942C31.3981 16.0279 31.2893 16.1367 31.1555 16.1367H30.4437C30.31 16.1367 30.2012 16.0279 30.2012 15.8942V14.2602C30.2012 14.1265 30.31 14.0177 30.4437 14.0177Z" fill="#A4B1EC"/>
+            <path class="trophy dark" d="M39.1059 38.7078H30.9827C29.6061 38.7078 28.4902 39.8236 28.4902 41.2002C28.4902 41.8629 29.0276 42.4003 29.6903 42.4003H40.398C41.0606 42.4003 41.598 41.8629 41.598 41.2002C41.598 39.8236 40.4822 38.7078 39.1056 38.7078H39.1059Z" fill="#A4B1EC"/>
+            </svg>
+            </a>';
         $output .= '</div>';
     }
 	$output .= '</div>';
+    $output .= "<script>
+    const tooltip = document.querySelector('.learning_path .tooltip');
+  
+    function startAnimation() {
+      tooltip.style.animation = 'seesaw 0.5s ease-in-out infinite';
+      setTimeout(stopAnimation, 2500); 
+      console.log('starting');
+    }
+  
+    function stopAnimation() {
+      tooltip.style.animation = 'none';
+      setTimeout(startAnimation, 5000); 
+      console.log('stopping');
+    }
+  
+    startAnimation(); // Start the animation when the page loads
+  </script>";
     return $output;
     }
 }
@@ -235,4 +342,3 @@ function pbd_lp() {
 
 // Initialize the plugin
 pbd_lp();
-?>
