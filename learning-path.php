@@ -1,11 +1,11 @@
 <?php
 /*
 Plugin Name: PBD Learning Path
-Plugin URI:  https://www.example.com
-Description: Custom Learning Path Plugin
+Plugin URI:  https://pbdigital.com.au
+Description: Custom Learning Path Plugin Add-on For Learndash
 Version:     1.0
-Author:      Your Name
-Author URI:  https://www.example.com
+Author:      PB Digital
+Author URI:  https://pbdigital.com.au
 License:     GPL2
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Text Domain: pbd-lp
@@ -204,16 +204,18 @@ class PBD_Learning_Path {
             $topic_count = count($topics) + 1; // Need to add one as we need to include the finish step which isn't an LD topic
             $middleIndex = floor( $topic_count / 2 );
             $isEven = $topic_count % 2 == 0;
+            $description = strip_tags($lesson['post']->post_content);
+            $limitedDescription = strlen($description) > 200 ? substr($description, 0, 200) . '...' : $description;
+
             $output .= '
                 <div class="learning_path_banner">
                     <div>
                         <div class="title">'.$lesson['post']->post_title.'</div>
-                        <div class="description">'.strip_tags($lesson['post']->post_content).'</div>
+                        <div class="description">'.$limitedDescription.'</div>
                     </div>
                     <div>
                     </div>
                 </div>
-            
             ';
             
             $output .= '<div class="learning_path">';
